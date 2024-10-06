@@ -10,11 +10,11 @@ const Validator = require('validatorjs');
 const { v4: uuidv4, v4 } = require('uuid');
 const multer = require('multer');
 const fs = require('fs');
-const { DirectoryLoader } = require('langchain/document_loaders/fs/directory');
-const { PDFLoader } = require('langchain/document_loaders/fs/pdf');
-const { RecursiveCharacterTextSplitter } = require('langchain/text_splitter');
-const { OpenAIEmbeddings } = require('@langchain/openai');
-const { PineconeStore } = require('@langchain/pinecone');
+// const { DirectoryLoader } = require('langchain/document_loaders/fs/directory');
+// const { PDFLoader } = require('langchain/document_loaders/fs/pdf');
+// const { RecursiveCharacterTextSplitter } = require('langchain/text_splitter');
+// const { OpenAIEmbeddings } = require('@langchain/openai');
+// const { PineconeStore } = require('@langchain/pinecone');
 
 require('dotenv').config();
 
@@ -189,11 +189,11 @@ module.exports = {
   QUERY,
   EVENTS,
   HTTP_STATUS_CODE,
-  DIRECTORY_LOADER: DirectoryLoader,
-  PDF_LOADER: PDFLoader,
-  RECURSIVE_CHARACTER_TEXT_SPLITTER: RecursiveCharacterTextSplitter,
-  OPEN_AI_EMBEDDING: OpenAIEmbeddings,
-  PINECONE_STORE: PineconeStore,
+  // DIRECTORY_LOADER: DirectoryLoader,
+  // PDF_LOADER: PDFLoader,
+  // RECURSIVE_CHARACTER_TEXT_SPLITTER: RecursiveCharacterTextSplitter,
+  // OPEN_AI_EMBEDDING: OpenAIEmbeddings,
+  // PINECONE_STORE: PineconeStore,
   VALID_FILES,
   VECTORS,
 };

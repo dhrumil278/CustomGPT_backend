@@ -3,8 +3,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../../model/User');
 
 const isUser = async (req, res, next) => {
+  console.log('isUser called:');
   try {
     let header = req.headers.authorization;
+    console.log('header: ', header);
     if (header && header !== '') {
       let authType = header.split(' ')[0];
 
@@ -18,6 +20,7 @@ const isUser = async (req, res, next) => {
         });
       }
       let token = header.split(' ')[1];
+      console.log('token: ', token);
 
       if (!token && token === '') {
         return res.status(HTTP_STATUS_CODE.FORBIDDEN).json({
@@ -30,6 +33,7 @@ const isUser = async (req, res, next) => {
       }
 
       const decode = await jwt.verify(token, process.env.JWT_SECRET_KEY);
+      console.log('decode: ', decode);
       req.userId = decode.userId;
 
       const findUser = await User.findOne({
@@ -48,6 +52,7 @@ const isUser = async (req, res, next) => {
         });
       }
 
+      console.log('findUser: ', findUser);
       if (findUser.accessToken !== token) {
         return res.status(HTTP_STATUS_CODE.FORBIDDEN).json({
           message: 'Forbidden!',

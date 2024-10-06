@@ -17,12 +17,12 @@ const userAuth = require('./routes/user/userAuth');
 app.use('/user', userAuth);
 
 // Vectors routes
-const vectors = require('./routes/vector/vectorsRoutes');
-app.use('/vectors', vectors);
+// const vectors = require('./routes/vector/vectorsRoutes');
+// app.use('/vectors', vectors);
 
 // ChatBot routes
-const chatBot = require('./routes/chatBot/chatBotRoutes');
-app.use('/chatBot', chatBot);
+// const chatBot = require('./routes/chatBot/chatBotRoutes');
+// app.use('/chatBot', chatBot);
 
 // set the port
 const port = process.env.PORT || 8080;

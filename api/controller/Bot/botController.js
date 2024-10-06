@@ -98,25 +98,31 @@ const deleteChatBot = async (req, res) => {
       });
     }
 
-    const findBot = await ChatBot.findOne({
-      _id: id,
-      isDeleted: false,
-      isActive: true,
-    });
+    // const findBot = await ChatBot.findOne({
+    //   _id: id,
+    //   isDeleted: false,
+    //   isActive: true,
+    // });
 
-    if (!findBot) {
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: 'Bot Not Found',
-        data: '',
-        error: '',
-        errorCode: 'CBT002',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+    // if (!findBot) {
+    //   return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+    //     message: 'Bot Not Found',
+    //     data: '',
+    //     error: '',
+    //     errorCode: 'CBT002',
+    //     statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+    //   });
+    // }
 
     const deleteChatBot = await ChatBot.findOneAndUpdate(
       { _id: id },
       { isDeleted: true, isActive: false },
+      { new: true }
+    );
+
+    const deleteChatBotReference = await User.findOneAndUpdate(
+      { _id: userId },
+      { $pull: { chatBots: id } },
       { new: true }
     );
 
@@ -215,7 +221,10 @@ const listChatBot = async (req, res) => {
 
     const userId = req.userId;
 
-    const getList = await User.findOne({ _id: userId }).populate('chatBots');
+    const getList = await User.findOne({ _id: userId }).populate({
+      path: 'chatBots',
+      options: { sort: { createdAt: -1 } },
+    });
 
     return res.status(HTTP_STATUS_CODE.OK).json({
       message: 'ChatBot List',

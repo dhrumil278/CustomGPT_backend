@@ -1,349 +1,369 @@
-const { documentLoader } = require('../../helpers/vectors/documentLoader');
-const { HTTP_STATUS_CODE, VALIDATOR } = require('../../../config/constant');
-const { v4: uuidv4 } = require('uuid');
-const Attachments = require('../../model/Attachments');
-const ChatBot = require('../../model/ChatBot');
-const { validationObject } = require('../../../config/validation');
-const {
-  removeAllPineconeVectors,
-} = require('../../helpers/vectors/removeAllVectors');
-const {
-  removeVectorResponse,
-} = require('../../helpers/vectors/removeVectorResponse');
+// const { HTTP_STATUS_CODE, VALIDATOR } = require('../../../config/constant');
+// const { validationObject } = require('../../../config/validation');
 
-const uploadFile = async (req, res) => {
-  try {
-    console.log('upload File called');
+// // Helpers
+// const { documentLoader } = require('../../helpers/vectors/documentLoader');
+// const {
+//   removeAllPineconeVectors,
+// } = require('../../helpers/vectors/removeAllVectors');
+// const {
+//   removeVectorResponse,
+// } = require('../../helpers/vectors/removeVectorResponse');
 
-    const { botId } = req.body;
+// // Models
+// const Attachments = require('../../model/Attachments');
+// const ChatBot = require('../../model/ChatBot');
 
-    let { files } = req;
+// // NPM Modules
+// // const { GoogleGenerativeAIEmbeddings } = require('@langchain/google-genai');
+// // const { TaskType } = require('@google/generative-ai');
+// const { v4: uuidv4 } = require('uuid');
 
-    let userId = req.userId;
+// const uploadFile = async (req, res) => {
+//   console.log('upload File called');
+//   try {
+//     const { botId } = req.body;
 
-    let reqData = {
-      id: botId,
-    };
+//     let { files } = req;
 
-    let validationRuleObj = {
-      id: validationObject.chatBot.id,
-    };
-    // validate Data
-    const validate = new VALIDATOR(reqData, validationRuleObj);
+//     let userId = req.userId;
 
-    if (validate.fails()) {
-      console.log('validation fails');
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: '',
-        data: '',
-        error: validate.errors.all(),
-        errorCode: 'AUTH001',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     const embeddings = new GoogleGenerativeAIEmbeddings({
+//       model: 'text-embedding-004', // 768 dimensions
+//       taskType: TaskType.RETRIEVAL_DOCUMENT,
+//       title: 'Document title',
+//     });
 
-    if (files.length < 1) {
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: 'File not Found',
-        data: '',
-        error: '',
-        errorCode: 'VEC001',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     // data object
+//     let reqData = {
+//       id: botId,
+//     };
 
-    const findBot = await ChatBot.findOne({ _id: botId });
+//     // validation object
+//     let validationRuleObj = {
+//       id: validationObject.chatBot.id,
+//     };
 
-    if (!findBot) {
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: 'Bot Not Found',
-        data: '',
-        error: '',
-        errorCode: 'CBT002',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     // validate Data
+//     const validate = new VALIDATOR(reqData, validationRuleObj);
 
-    for (let i = 0; i < files.length; i++) {
-      files[i]['id'] = uuidv4();
-      let documentLoaderRes = await documentLoader(files[i], botId);
+//     if (validate.fails()) {
+//       console.log('validation fails');
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: '',
+//         data: '',
+//         error: validate.errors.all(),
+//         errorCode: 'AUTH001',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-      if (!documentLoaderRes.hasError) {
-        let addDocuments = await Attachments.create({
-          id: files[i].id,
-          filename: files[i].filename,
-          size: files[i].size,
-          fileType: files[i].mimetype,
-          chatBotId: botId,
-          userId: userId,
-        });
+//     if (files.length < 1) {
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: 'File not Found',
+//         data: '',
+//         error: '',
+//         errorCode: 'VEC001',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-        let addDocInBot = await ChatBot.findOneAndUpdate(
-          { _id: botId },
-          { $push: { attachments: addDocuments.id } },
-          { new: true }
-        );
-      }
-    }
+//     const findBot = await ChatBot.findOne({
+//       _id: botId,
+//       isDeleted: false,
+//       isActive: true,
+//     });
 
-    return res.status(HTTP_STATUS_CODE.OK).json({
-      message: 'ChatBot created Successfully',
-      data: findBot,
-      error: '',
-      errorCode: 'SU001',
-      statusCode: HTTP_STATUS_CODE.OK,
-    });
-  } catch (error) {
-    console.log('error: ', error);
-    return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
-      message: 'Internal Server Error',
-      data: '',
-      error: '',
-      errorCode: 'ERR500',
-      statusCode: HTTP_STATUS_CODE.INTERNAL_SERVER,
-    });
-  }
-};
+//     if (!findBot) {
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: 'Bot Not Found',
+//         data: '',
+//         error: '',
+//         errorCode: 'CBT002',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-const removeVectors = async (req, res) => {
-  try {
-    console.log('removeVectors called');
+//     for (let i = 0; i < files.length; i++) {
+//       files[i]['id'] = uuidv4();
+//       let documentLoaderRes = await documentLoader(files[i], botId);
 
-    const { documentId, botId } = req.body;
-    const userId = req.userId;
+//       if (!documentLoaderRes.hasError) {
+//         let addDocuments = await Attachments.create({
+//           id: files[i].id,
+//           filename: files[i].filename,
+//           size: files[i].size,
+//           fileType: files[i].mimetype,
+//           chatBotId: botId,
+//           userId: userId,
+//         });
 
-    let reqData = {
-      id: documentId,
-      botId: botId,
-    };
+//         let addDocInBot = await ChatBot.findOneAndUpdate(
+//           { _id: botId },
+//           { $push: { attachments: addDocuments.id } },
+//           { new: true }
+//         );
+//       }
+//     }
 
-    let validationRuleObj = {
-      id: validationObject.documents.id,
-      botId: validationObject.documents.botId,
-    };
+//     return res.status(HTTP_STATUS_CODE.OK).json({
+//       message: 'ChatBot created Successfully',
+//       data: findBot,
+//       error: '',
+//       errorCode: 'SU001',
+//       statusCode: HTTP_STATUS_CODE.OK,
+//     });
+//   } catch (error) {
+//     console.log('error: ', error);
+//     return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
+//       message: 'Internal Server Error',
+//       data: '',
+//       error: '',
+//       errorCode: 'ERR500',
+//       statusCode: HTTP_STATUS_CODE.INTERNAL_SERVER,
+//     });
+//   }
+// };
 
-    // validate Data
-    const validate = new VALIDATOR(reqData, validationRuleObj);
+// const removeVectors = async (req, res) => {
+//   try {
+//     console.log('removeVectors called');
 
-    if (validate.fails()) {
-      console.log('validation fails');
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: '',
-        data: '',
-        error: validate.errors.all(),
-        errorCode: 'AUTH001',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     const { documentId, botId } = req.body;
+//     const userId = req.userId;
 
-    const findBot = await ChatBot.findOne({ _id: botId });
+//     let reqData = {
+//       id: documentId,
+//       botId: botId,
+//     };
 
-    if (!findBot) {
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: 'Bot Not Found',
-        data: '',
-        error: '',
-        errorCode: 'CBT002',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     let validationRuleObj = {
+//       id: validationObject.documents.id,
+//       botId: validationObject.documents.botId,
+//     };
 
-    const removeVectorResult = await removeVectorResponse({
-      namespace: botId,
-      id: documentId,
-    });
+//     // validate Data
+//     const validate = new VALIDATOR(reqData, validationRuleObj);
 
-    if (removeVectorResult.hasError) {
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: '',
-        data: '',
-        error: '',
-        errorCode: 'VEC003',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     if (validate.fails()) {
+//       console.log('validation fails');
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: '',
+//         data: '',
+//         error: validate.errors.all(),
+//         errorCode: 'AUTH001',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-    const updateAttachments = await Attachments.findOneAndUpdate(
-      { _id: documentId, chatBotId: botId },
-      { isDeleted: true, isActive: false }
-    );
+//     const findBot = await ChatBot.findOne({ _id: botId });
 
-    const updateChatBoot = await ChatBot.findOneAndUpdate(
-      { _id: botId },
-      { $pull: { attachments: documentId } }
-    );
+//     if (!findBot) {
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: 'Bot Not Found',
+//         data: '',
+//         error: '',
+//         errorCode: 'CBT002',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-    return res.status(HTTP_STATUS_CODE.OK).json({
-      message: 'Documents Deleted',
-      data: '',
-      error: '',
-      errorCode: 'SU001',
-      statusCode: HTTP_STATUS_CODE.OK,
-    });
-  } catch (error) {
-    console.log('error: ', error);
-    return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
-      message: 'Internal Server Error',
-      data: '',
-      error: '',
-      errorCode: 'ERR500',
-      statusCode: HTTP_STATUS_CODE.INTERNAL_SERVER,
-    });
-  }
-};
+//     const removeVectorResult = await removeVectorResponse({
+//       namespace: botId,
+//       id: documentId,
+//     });
 
-const removeAllVectors = async (req, res) => {
-  try {
-    console.log('removeAllVectors called');
+//     if (removeVectorResult.hasError) {
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: '',
+//         data: '',
+//         error: '',
+//         errorCode: 'VEC003',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-    const { botId } = req.body;
-    const userId = req.userId;
+//     const updateAttachments = await Attachments.findOneAndUpdate(
+//       { _id: documentId, chatBotId: botId },
+//       { isDeleted: true, isActive: false }
+//     );
 
-    let reqData = {
-      botId: botId,
-    };
+//     const updateChatBoot = await ChatBot.findOneAndUpdate(
+//       { _id: botId },
+//       { $pull: { attachments: documentId } }
+//     );
 
-    let validationRuleObj = {
-      botId: validationObject.documents.botId,
-    };
+//     return res.status(HTTP_STATUS_CODE.OK).json({
+//       message: 'Documents Deleted',
+//       data: '',
+//       error: '',
+//       errorCode: 'SU001',
+//       statusCode: HTTP_STATUS_CODE.OK,
+//     });
+//   } catch (error) {
+//     console.log('error: ', error);
+//     return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
+//       message: 'Internal Server Error',
+//       data: '',
+//       error: '',
+//       errorCode: 'ERR500',
+//       statusCode: HTTP_STATUS_CODE.INTERNAL_SERVER,
+//     });
+//   }
+// };
 
-    // validate Data
-    const validate = new VALIDATOR(reqData, validationRuleObj);
+// const removeAllVectors = async (req, res) => {
+//   try {
+//     console.log('removeAllVectors called');
 
-    if (validate.fails()) {
-      console.log('validation fails');
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: '',
-        data: '',
-        error: validate.errors.all(),
-        errorCode: 'AUTH001',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     const { botId } = req.body;
+//     const userId = req.userId;
 
-    const findBot = await ChatBot.findOne({ _id: botId });
+//     let reqData = {
+//       botId: botId,
+//     };
 
-    if (!findBot) {
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: 'Bot Not Found',
-        data: '',
-        error: '',
-        errorCode: 'CBT002',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     let validationRuleObj = {
+//       botId: validationObject.documents.botId,
+//     };
 
-    const removeAllVectorsResponse = await removeAllPineconeVectors({
-      namespace: botId,
-    });
+//     // validate Data
+//     const validate = new VALIDATOR(reqData, validationRuleObj);
 
-    if (removeAllVectorsResponse.hasError) {
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: 'Error In Removing Vectors',
-        data: '',
-        error: '',
-        errorCode: 'CBT003',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     if (validate.fails()) {
+//       console.log('validation fails');
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: '',
+//         data: '',
+//         error: validate.errors.all(),
+//         errorCode: 'AUTH001',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-    const updateAttachments = await Attachments.updateMany(
-      { chatBotId: botId },
-      { isDeleted: true, isActive: false }
-    );
+//     const findBot = await ChatBot.findOne({ _id: botId });
 
-    const updateChatBoot = await ChatBot.findOneAndUpdate(
-      { _id: botId },
-      { attachments: [] }
-    );
+//     if (!findBot) {
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: 'Bot Not Found',
+//         data: '',
+//         error: '',
+//         errorCode: 'CBT002',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-    return res.status(HTTP_STATUS_CODE.OK).json({
-      message: 'Documents removed',
-      data: '',
-      error: '',
-      errorCode: 'SU001',
-      statusCode: HTTP_STATUS_CODE.OK,
-    });
-  } catch (error) {
-    console.log('error: ', error);
-    return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
-      message: 'Internal Server Error',
-      data: '',
-      error: '',
-      errorCode: 'ERR500',
-      statusCode: HTTP_STATUS_CODE.INTERNAL_SERVER,
-    });
-  }
-};
+//     const removeAllVectorsResponse = await removeAllPineconeVectors({
+//       namespace: botId,
+//     });
 
-const getDocumentsList = async (req, res) => {
-  try {
-    console.log('getDocumentsList called...');
-    let userId = req.userId;
-    let { botId } = req.params;
+//     if (removeAllVectorsResponse.hasError) {
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: 'Error In Removing Vectors',
+//         data: '',
+//         error: '',
+//         errorCode: 'CBT003',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-    let reqData = {
-      botId: botId,
-    };
+//     const updateAttachments = await Attachments.updateMany(
+//       { chatBotId: botId },
+//       { isDeleted: true, isActive: false }
+//     );
 
-    let validationRuleObj = {
-      botId: validationObject.documents.botId,
-    };
+//     const updateChatBoot = await ChatBot.findOneAndUpdate(
+//       { _id: botId },
+//       { attachments: [] }
+//     );
 
-    // validate Data
-    const validate = new VALIDATOR(reqData, validationRuleObj);
+//     return res.status(HTTP_STATUS_CODE.OK).json({
+//       message: 'Documents removed',
+//       data: '',
+//       error: '',
+//       errorCode: 'SU001',
+//       statusCode: HTTP_STATUS_CODE.OK,
+//     });
+//   } catch (error) {
+//     console.log('error: ', error);
+//     return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
+//       message: 'Internal Server Error',
+//       data: '',
+//       error: '',
+//       errorCode: 'ERR500',
+//       statusCode: HTTP_STATUS_CODE.INTERNAL_SERVER,
+//     });
+//   }
+// };
 
-    if (validate.fails()) {
-      console.log('validation fails');
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: '',
-        data: '',
-        error: validate.errors.all(),
-        errorCode: 'AUTH001',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+// const getDocumentsList = async (req, res) => {
+//   try {
+//     console.log('getDocumentsList called...');
+//     let userId = req.userId;
+//     let { botId } = req.params;
 
-    const findBot = await ChatBot.findOne({ _id: botId });
+//     let reqData = {
+//       botId: botId,
+//     };
 
-    if (!findBot) {
-      return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
-        message: 'Bot Not Found',
-        data: '',
-        error: '',
-        errorCode: 'CBT002',
-        statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
-      });
-    }
+//     let validationRuleObj = {
+//       botId: validationObject.documents.botId,
+//     };
 
-    const getList = await Attachments.find({
-      chatBotId: botId,
-      isDeleted: false,
-      isActive: true,
-    });
+//     // validate Data
+//     const validate = new VALIDATOR(reqData, validationRuleObj);
 
-    return res.status(HTTP_STATUS_CODE.OK).json({
-      message: 'Documents List',
-      data: getList,
-      error: '',
-      errorCode: 'SU001',
-      statusCode: HTTP_STATUS_CODE.OK,
-    });
-  } catch (error) {
-    console.log('error: ', error);
-    return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
-      message: 'Internal Server Error',
-      data: '',
-      error: '',
-      errorCode: 'ERR500',
-      statusCode: HTTP_STATUS_CODE.INTERNAL_SERVER,
-    });
-  }
-};
+//     if (validate.fails()) {
+//       console.log('validation fails');
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: '',
+//         data: '',
+//         error: validate.errors.all(),
+//         errorCode: 'AUTH001',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
 
-module.exports = {
-  uploadFile,
-  removeVectors,
-  removeAllVectors,
-  getDocumentsList,
-};
+//     const findBot = await ChatBot.findOne({ _id: botId });
+
+//     if (!findBot) {
+//       return res.status(HTTP_STATUS_CODE.BAD_REQUEST).json({
+//         message: 'Bot Not Found',
+//         data: '',
+//         error: '',
+//         errorCode: 'CBT002',
+//         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
+//       });
+//     }
+
+//     const getList = await Attachments.find({
+//       chatBotId: botId,
+//       isDeleted: false,
+//       isActive: true,
+//     });
+
+//     return res.status(HTTP_STATUS_CODE.OK).json({
+//       message: 'Documents List',
+//       data: getList,
+//       error: '',
+//       errorCode: 'SU001',
+//       statusCode: HTTP_STATUS_CODE.OK,
+//     });
+//   } catch (error) {
+//     console.log('error: ', error);
+//     return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
+//       message: 'Internal Server Error',
+//       data: '',
+//       error: '',
+//       errorCode: 'ERR500',
+//       statusCode: HTTP_STATUS_CODE.INTERNAL_SERVER,
+//     });
+//   }
+// };
+
+// module.exports = {
+//   uploadFile,
+//   removeVectors,
+//   removeAllVectors,
+//   getDocumentsList,
+// };

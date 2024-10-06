@@ -8,12 +8,14 @@ const { validationObject } = require('../../../config/validation');
 const { generateToken } = require('../../helpers/Auth/generateToken');
 const User = require('../../model/User');
 const { sendMail } = require('../../helpers/Notification/sendEmail');
+const { FRONTEND_URL, BACKEND_URL } = require('../../../config/frontEndUrls');
 
 let registerUser = async (req, res) => {
   console.log('Register User Called...');
   try {
     let { email, password, firstName, lastName } = req.body;
 
+    // data object
     let reqData = {
       email: email,
       password: password,
@@ -21,12 +23,14 @@ let registerUser = async (req, res) => {
       lastName: lastName,
     };
 
+    // vaidation object
     let validationRuleObj = {
       email: validationObject.user.email,
       password: validationObject.user.password,
       firstName: validationObject.user.firstName,
       lastName: validationObject.user.lastName,
     };
+
     // validate Data
     const validate = new VALIDATOR(reqData, validationRuleObj);
 
@@ -41,7 +45,7 @@ let registerUser = async (req, res) => {
       });
     }
 
-    // Check is this a New User or Not
+    // Check is this a New User or user already exists with the same email
     let findUser = await User.findOne({
       email: email,
       isDeleted: false,
@@ -59,9 +63,10 @@ let registerUser = async (req, res) => {
       });
     }
 
-    // Generate the Hash Password
+    // Generate the Hash Password for the user's privacy and better security
     let hash = await bcrypt.hash(password, 10);
 
+    // create user in the DB
     const createUser = await User.create({ ...reqData, password: hash });
 
     if (!createUser) {
@@ -74,13 +79,14 @@ let registerUser = async (req, res) => {
       });
     }
 
-    // Sign the Token
+    // Sign the Token so we can validate the user for other api calles
     let payload = {
       id: createUser.id,
       secretKey: process.env.JWT_SECRET_KEY,
       expiresIn: '3d',
     };
 
+    // generate token helper
     let token = await generateToken(payload);
 
     if (token.hasError) {
@@ -93,15 +99,20 @@ let registerUser = async (req, res) => {
       });
     }
 
-    // save token in DB
+    // update the user and store token in DB
     let updateUser = await User.findOneAndUpdate(
       { _id: createUser.id },
       { accessToken: token.data },
       { new: true }
     );
 
-    let link = `${process.env.SERVER_URL}/user/emailVerification?token=${token.data}`;
+    // prepare the verification email link
+    let link =
+      BACKEND_URL.REGISTER_USER_EMAIL_VERIFICATION +
+      '?' +
+      `token=${token.data}`;
 
+    // preapare the mail data
     let mailData = {
       from: process.env.COMPANY_EMAIL,
       to: email,
@@ -109,6 +120,7 @@ let registerUser = async (req, res) => {
       cc: '',
     };
 
+    // render the html tempate for email
     const html = await ejs.renderFile(
       path.join('./view/emailTemplate', 'verifyEmail.ejs'),
       { link },
@@ -117,6 +129,7 @@ let registerUser = async (req, res) => {
 
     mailData['html'] = html;
 
+    // send mail template
     let mailResult = await sendMail(mailData);
 
     if (mailResult.hasError == true) {
@@ -128,8 +141,9 @@ let registerUser = async (req, res) => {
         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
       });
     } else {
+      updateUser = updateUser.toObject(); // Convert Mongoose document to plain object
       delete updateUser.password;
-      createUser['accessToken'] = token.data;
+      delete updateUser.accessToken;
       return res.status(HTTP_STATUS_CODE.OK).json({
         message: 'Verification Email Send!',
         data: updateUser,
@@ -155,15 +169,18 @@ let login = async (req, res) => {
   try {
     let { email, password } = req.body;
 
+    // data object
     let reqData = {
       email: email,
       password: password,
     };
 
+    // validation object
     let validationRuleObj = {
       email: validationObject.user.email,
       password: validationObject.user.password,
     };
+
     // validate Data
     const validate = new VALIDATOR(reqData, validationRuleObj);
 
@@ -196,6 +213,7 @@ let login = async (req, res) => {
       });
     }
 
+    // compate the password to verify the user login
     let compare = await bcrypt.compare(password, findUser.password);
 
     // return the error on password incorrect
@@ -229,13 +247,14 @@ let login = async (req, res) => {
       });
     }
 
-    // save token in DB
+    // after the successful login user have a new token for the api calls -> save token in DB
     let updateUser = await User.findOneAndUpdate(
       { _id: findUser.id },
       { accessToken: token.data },
       { new: true }
     );
 
+    updateUser = updateUser.toObject(); // Convert Mongoose document to plain object
     delete updateUser.password;
 
     return res.status(HTTP_STATUS_CODE.OK).json({
@@ -264,15 +283,15 @@ let emailVerification = async (req, res) => {
     let { token } = req.query;
 
     // get the userId from the middleware
-    // let userId = req.userId;
-
     let reqData = {
       token: token,
     };
 
+    // validation object
     let validationRuleObj = {
       token: validationObject.user.token,
     };
+
     // validate Data
     const validate = new VALIDATOR(reqData, validationRuleObj);
 
@@ -304,6 +323,7 @@ let emailVerification = async (req, res) => {
       });
     }
 
+    // verify the token or decode the token
     const decode = await jwt.verify(token, process.env.JWT_SECRET_KEY);
     let userId = decode.userId;
 
@@ -335,10 +355,12 @@ let emailVerification = async (req, res) => {
     );
 
     delete updateUser.password;
-    // let finalResult = { ...findUser, accessToken: newToken.data };
-    // delete finalResult.password;
 
-    return res.redirect(`${process.env.FRONTEND_URL}/home?${newToken.data}`);
+    // redirect URL after the verification of email
+    let redirectUrl =
+      FRONTEND_URL.REDIRECT_ON_EMAIL_VERIFICATION + '?' + newToken.data;
+
+    return res.redirect(redirectUrl);
   } catch (error) {
     console.log('error: ', error);
     return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
@@ -356,13 +378,16 @@ let forgotPassword = async (req, res) => {
   try {
     let { email } = req.body;
 
+    // data object
     let reqData = {
       email: email,
     };
 
+    // validation object
     let validationRuleObj = {
       email: validationObject.user.email,
     };
+
     // validate Data
     const validate = new VALIDATOR(reqData, validationRuleObj);
 
@@ -412,7 +437,11 @@ let forgotPassword = async (req, res) => {
       { new: true }
     );
 
-    let link = `${process.env.SERVER_URL}/user/verifyForgotEmail?token=${token.data}`;
+    // prepare the link for the
+    let link =
+      BACKEND_URL.FORGOT_PASSWORD_EMAIL_VERIFICATION +
+      '?' +
+      `token=${token.data}`;
 
     let mailData = {
       from: process.env.COMPANY_EMAIL,
@@ -440,7 +469,10 @@ let forgotPassword = async (req, res) => {
         statusCode: HTTP_STATUS_CODE.BAD_REQUEST,
       });
     } else {
+      updateUser = updateUser.toObject(); // Convert Mongoose document to plain object
       delete updateUser.password;
+      delete updateUser.accessToken;
+
       return res.status(HTTP_STATUS_CODE.OK).json({
         message: 'Verification Email Send!',
         data: updateUser,
@@ -467,13 +499,16 @@ let verifyForgotEmail = async (req, res) => {
     // get the data from the req body
     let { token } = req.query;
 
+    // data object
     let reqData = {
       token: token,
     };
 
+    // validation object
     let validationRuleObj = {
       token: validationObject.user.token,
     };
+
     // validate Data
     const validate = new VALIDATOR(reqData, validationRuleObj);
 
@@ -505,6 +540,7 @@ let verifyForgotEmail = async (req, res) => {
       });
     }
 
+    // decode the token
     const decode = await jwt.verify(token, process.env.JWT_SECRET_KEY);
     let userId = decode.userId;
 
@@ -535,12 +571,14 @@ let verifyForgotEmail = async (req, res) => {
       { new: true }
     );
 
-    // let finalResult = { ...findUser, accessToken: newToken.data };
     delete updateUser.password;
 
-    return res.redirect(
-      `${process.env.FRONTEND_URL}/setNewPassword?accessToken=${newToken.data}`
-    );
+    let link =
+      FRONTEND_URL.REDIRECT_ON_FORGOT_PASSWORD_VERIFICATION +
+      '?' +
+      `accessToken=${newToken.data}`;
+
+    return res.redirect(link);
   } catch (error) {
     console.log('error: ', error);
     return res.status(HTTP_STATUS_CODE.INTERNAL_SERVER).json({
@@ -562,13 +600,16 @@ let changeForgotPassword = async (req, res) => {
     // get the userId from the middleware
     let userId = req.userId;
 
+    // data object
     let reqData = {
       password: password,
     };
 
+    // validation object
     let validationRuleObj = {
       password: validationObject.user.password,
     };
+
     // validate Data
     const validate = new VALIDATOR(reqData, validationRuleObj);
 
@@ -630,7 +671,7 @@ let changeForgotPassword = async (req, res) => {
       { new: true }
     );
 
-    // let finalResult = { ...findUser, accessToken: newToken.data };
+    updateUser = updateUser.toObject(); // Convert Mongoose document to plain object
     delete updateUser.password;
 
     return res.status(HTTP_STATUS_CODE.OK).json({
