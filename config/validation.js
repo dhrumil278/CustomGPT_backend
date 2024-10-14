@@ -41,6 +41,7 @@ const validationObject = {
   documents: {
     id: 'string|required',
     botId: 'string|required',
+    documentType: 'string|required',
   },
 };
 

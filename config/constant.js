@@ -10,16 +10,35 @@ const Validator = require('validatorjs');
 const { v4: uuidv4, v4 } = require('uuid');
 const multer = require('multer');
 const fs = require('fs');
-// const { DirectoryLoader } = require('langchain/document_loaders/fs/directory');
-// const { PDFLoader } = require('langchain/document_loaders/fs/pdf');
-// const { RecursiveCharacterTextSplitter } = require('langchain/text_splitter');
-// const { OpenAIEmbeddings } = require('@langchain/openai');
-// const { PineconeStore } = require('@langchain/pinecone');
+const { DirectoryLoader } = require('langchain/document_loaders/fs/directory');
+const {
+  JSONLoader,
+  JSONLinesLoader,
+} = require('langchain/document_loaders/fs/json');
+const { TextLoader } = require('langchain/document_loaders/fs/text');
+const { CSVLoader } = require('@langchain/community/document_loaders/fs/csv');
+const { PDFLoader } = require('@langchain/community/document_loaders/fs/pdf');
+// const pinecone = new Pinecone();
+const { PineconeStore } = require('@langchain/pinecone');
+const { Pinecone: PineconeClient } = require('@pinecone-database/pinecone');
+const { GoogleGenerativeAIEmbeddings } = require('@langchain/google-genai');
+const { TaskType } = require('@google/generative-ai');
+const { RecursiveCharacterTextSplitter } = require('@langchain/textsplitters');
 
 require('dotenv').config();
 
 // whitelist urls
 const whitelist = ['*'];
+
+// Configure pinecone Index
+const embeddings = new GoogleGenerativeAIEmbeddings({
+  model: 'text-embedding-004', // 768 dimensions
+  taskType: TaskType.RETRIEVAL_DOCUMENT,
+  title: 'Document title',
+});
+
+const pinecone = new PineconeClient();
+const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX);
 
 // cors options
 const CORS_OPTIONS = {
@@ -174,6 +193,12 @@ const VECTORS = [
   0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 ];
 
+const DOCUMENT_TYPE = {
+  DOCUMENTS: 'D',
+  WEB: 'W',
+  TEXT: 'T',
+};
+
 module.exports = {
   AXIOS: axios,
   BCRYPT: bcrypt,
@@ -190,10 +215,21 @@ module.exports = {
   EVENTS,
   HTTP_STATUS_CODE,
   // DIRECTORY_LOADER: DirectoryLoader,
-  // PDF_LOADER: PDFLoader,
   // RECURSIVE_CHARACTER_TEXT_SPLITTER: RecursiveCharacterTextSplitter,
   // OPEN_AI_EMBEDDING: OpenAIEmbeddings,
   // PINECONE_STORE: PineconeStore,
+  DIRECTORY_LOADER: DirectoryLoader,
+  JSON_LOADER: JSONLoader,
+  JSON_LINE_LOADER: JSONLinesLoader,
+  TEXT_LOADER: TextLoader,
+  PDF_LOADER: PDFLoader,
+  CSV_LOADER: CSVLoader,
+  PINECONE: pinecone,
+  PINECONE_INDEX: pineconeIndex,
+  GOOGLE_EMBEDDINGS: embeddings,
+  PINECONE_STORE: PineconeStore,
+  RECURSIVE_CHARACTER_TEXT_SPLITTER: RecursiveCharacterTextSplitter,
   VALID_FILES,
   VECTORS,
+  DOCUMENT_TYPE,
 };

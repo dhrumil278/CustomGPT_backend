@@ -1,14 +1,12 @@
-const { Pinecone } = require('@pinecone-database/pinecone');
+const { PINECONE_INDEX } = require('../../../config/constant');
 
 const removeAllPineconeVectors = async (data) => {
   try {
     console.log('removeAllPineconeVectors helper called....');
 
     const { namespace } = data;
-    const pinecone = new Pinecone();
-    const index = pinecone.Index(process.env.PINECONE_INDEX);
 
-    await index.namespace(namespace).deleteAll();
+    await PINECONE_INDEX.namespace(namespace).deleteAll();
 
     return { hasError: false };
   } catch (error) {
